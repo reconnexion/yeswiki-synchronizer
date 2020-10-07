@@ -30,7 +30,10 @@ const SynchronizerService = {
         yeswikiUri: 'http://localhost',
         formId: 1,
         headers: {},
-        transformData: object => object
+        transformData: object => {
+          object.image = object.image.url;
+          return object;
+        }
       }
     }
   },
@@ -63,6 +66,7 @@ const SynchronizerService = {
     },
     async createObject(ctx) {
       const { apiKey, object } = ctx.params;
+      console.log('create object', JSON.stringify(this.settings.restApis[apiKey].transformData(object)));
       const wikiPage = await this.actions.getWikiPage({ sourceUrl: this.getObjectId(object), apiKey });
       if( !wikiPage ) {
         const response = await fetch(this.getContainerUri(apiKey), {
@@ -74,7 +78,11 @@ const SynchronizerService = {
           },
           body: JSON.stringify(this.settings.restApis[apiKey].transformData(object))
         });
-        return response.ok;
+        // TODO return error
+        if( !response.ok ) {
+          const json = await response.json();
+          console.log('Error returned by ' + this.getContainerUri(apiKey) + ': ' + json.error);
+        }
       } else {
         // If a page already exist with this sourceUrl, update it
         return await this.actions.updateObject({ apiKey, object });
@@ -95,7 +103,7 @@ const SynchronizerService = {
         return response.ok;
       } else {
         // If no page exist with this sourceUrl, create it
-        return await this.actions.updateObject({ apiKey, object });
+        return await this.actions.createObject({ apiKey, object });
       }
     },
     async deleteObject(ctx) {
@@ -129,8 +137,11 @@ const SynchronizerService = {
     },
     inboxReceived(activity) {
       // TODO uniformize context
+      console.log('inbox received', activity);
 
       const matchingApisKeys = this.getMatchingApis(activity);
+      console.log('matchingApisKeys', matchingApisKeys);
+
       if( matchingApisKeys ) {
         matchingApisKeys.map(apiKey => {
           switch (activity.type) {
