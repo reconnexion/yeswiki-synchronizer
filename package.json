@@ -1,5 +1,6 @@
 {
-  "name": "yeswiki-synchro",
+  "name": "yeswiki-synchronizer",
+  "private": true,
   "version": "1.0.0",
   "description": "SemApps-based ActivityPub server",
   "keywords": [
