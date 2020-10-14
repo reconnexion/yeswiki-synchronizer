@@ -13,7 +13,7 @@ module.exports = {
   async started() {
     [
       ...(await this.broker.call('activitypub.getApiRoutes')),
-      ...(await this.broker.call('webfinger.getApiRoutes')),
+      ...(await this.broker.call('webfinger.getApiRoutes'))
     ].forEach(route => this.addRoute(route));
   }
 };

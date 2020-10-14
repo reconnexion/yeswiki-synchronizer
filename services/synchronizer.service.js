@@ -38,10 +38,12 @@ const SynchronizerService = {
     }
   },
   async started() {
-    for( let apiKey in this.settings.restApis ) {
-      if( !this.settings.restApis[apiKey].actorUri ) {
-        const uri = await this.broker.call('webfinger.getRemoteUri', { account: this.settings.restApis[apiKey].actorAccount });
-        if( uri ) {
+    for (let apiKey in this.settings.restApis) {
+      if (!this.settings.restApis[apiKey].actorUri) {
+        const uri = await this.broker.call('webfinger.getRemoteUri', {
+          account: this.settings.restApis[apiKey].actorAccount
+        });
+        if (uri) {
           this.settings.restApis[apiKey].actorUri = uri;
         } else {
           throw new Error('Unable to find remote actor ' + this.settings.restApis[apiKey].actorAccount);
@@ -51,9 +53,11 @@ const SynchronizerService = {
   },
   actions: {
     async followActors(ctx) {
-      for(let apiKey in this.settings.restApis) {
+      for (let apiKey in this.settings.restApis) {
         // We can't be sure to use actorUri because started() has not been called yet
-        const uri = this.settings.restApis[apiKey].actorUri || await this.broker.call('webfinger.getRemoteUri', { account: this.settings.restApis[apiKey].actorAccount });
+        const uri =
+          this.settings.restApis[apiKey].actorUri ||
+          (await this.broker.call('webfinger.getRemoteUri', { account: this.settings.restApis[apiKey].actorAccount }));
         await ctx.call('activitypub.outbox.post', {
           username: this.settings.actor.username,
           '@context': 'https://www.w3.org/ns/activitystreams',
@@ -68,7 +72,7 @@ const SynchronizerService = {
       const { apiKey, object } = ctx.params;
       console.log('create object', JSON.stringify(this.settings.restApis[apiKey].transformData(object)));
       const wikiPage = await this.actions.getWikiPage({ sourceUrl: this.getObjectId(object), apiKey });
-      if( !wikiPage ) {
+      if (!wikiPage) {
         const response = await fetch(this.getContainerUri(apiKey), {
           method: 'POST',
           headers: {
@@ -79,7 +83,7 @@ const SynchronizerService = {
           body: JSON.stringify(this.settings.restApis[apiKey].transformData(object))
         });
         // TODO return error
-        if( !response.ok ) {
+        if (!response.ok) {
           const json = await response.json();
           console.log('Error returned by ' + this.getContainerUri(apiKey) + ': ' + json.error);
         }
@@ -91,7 +95,7 @@ const SynchronizerService = {
     async updateObject(ctx) {
       const { apiKey, object } = ctx.params;
       const wikiPage = await this.actions.getWikiPage({ sourceUrl: this.getObjectId(object), apiKey });
-      if( wikiPage ) {
+      if (wikiPage) {
         const response = await fetch(wikiPage, {
           method: 'PATCH',
           headers: {
@@ -109,7 +113,7 @@ const SynchronizerService = {
     async deleteObject(ctx) {
       const { apiKey, object } = ctx.params;
       const wikiPage = await this.actions.getWikiPage({ sourceUrl: this.getObjectId(object), apiKey });
-      if( wikiPage ) {
+      if (wikiPage) {
         const response = await fetch(wikiPage, {
           method: 'DELETE',
           headers: {
@@ -124,8 +128,10 @@ const SynchronizerService = {
     },
     async getWikiPage(ctx) {
       const { apiKey, sourceUrl } = ctx.params;
-      const response = await fetch(urlJoin(this.settings.restApis[apiKey].yeswikiUri, '?api/fiche/url/' + encodeURIComponent(sourceUrl)));
-      if( response.ok ) {
+      const response = await fetch(
+        urlJoin(this.settings.restApis[apiKey].yeswikiUri, '?api/fiche/url/' + encodeURIComponent(sourceUrl))
+      );
+      if (response.ok) {
         const wikiPages = await response.json();
         return wikiPages[0];
       }
@@ -142,21 +148,21 @@ const SynchronizerService = {
       const matchingApisKeys = this.getMatchingApis(activity);
       console.log('matchingApisKeys', matchingApisKeys);
 
-      if( matchingApisKeys ) {
+      if (matchingApisKeys) {
         matchingApisKeys.map(apiKey => {
           switch (activity.type) {
             case ACTIVITY_TYPES.CREATE: {
-              this.actions.createObject({apiKey, object: activity.object});
+              this.actions.createObject({ apiKey, object: activity.object });
               break;
             }
 
             case ACTIVITY_TYPES.UPDATE: {
-              this.actions.updateObject({apiKey, object: activity.object});
+              this.actions.updateObject({ apiKey, object: activity.object });
               break;
             }
 
             case ACTIVITY_TYPES.DELETE: {
-              this.actions.deleteObject({apiKey, object: activity.object});
+              this.actions.deleteObject({ apiKey, object: activity.object });
               break;
             }
 
@@ -170,15 +176,13 @@ const SynchronizerService = {
       }
     },
     getMatchingApis(activity) {
-      return Object.keys(this.settings.restApis).filter(apiKey =>
-        activity.actor === this.settings.restApis[apiKey].actorUri && (
-          activity.type === ACTIVITY_TYPES.DELETE || (
-            activity.object &&
-            Array.isArray(activity.object.type)
+      return Object.keys(this.settings.restApis).filter(
+        apiKey =>
+          activity.actor === this.settings.restApis[apiKey].actorUri &&
+          (activity.type === ACTIVITY_TYPES.DELETE ||
+            (activity.object && Array.isArray(activity.object.type)
               ? activity.object.type.includes(this.settings.restApis[apiKey].objectType)
-              : activity.object.type === this.settings.restApis[apiKey].objectType
-          )
-        )
+              : activity.object.type === this.settings.restApis[apiKey].objectType))
       );
     },
     getContainerUri(apiKey) {
